@@ -11,6 +11,12 @@
               class="w-full flex-no-shrink mt-1 text-sm"
             >{{ task.description }}</p>
           </div>
+          <input
+            type="text"
+            class="block p-2 w-full bg-transparent outline-none"
+            placeholder="+ Enter new task"
+            @keyup.enter="createTask($event, column.tasks)"
+          />
         </div>
       </div>
     </div>
@@ -22,7 +28,7 @@
 </template>
 
 <script>
-import { mapState } from "vuex";
+import { mapState, mapMutations } from "vuex";
 export default {
   computed: {
     ...mapState(["board"]),
@@ -43,6 +49,13 @@ export default {
       this.$router.push({
         name: "board"
       });
+    },
+    createTask(e, tasks) {
+      this.$store.commit("CREATE_TASK", {
+        tasks,
+        name: e.target.value
+      });
+      e.target.value = "";
     }
   }
 };

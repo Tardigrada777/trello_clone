@@ -3,19 +3,24 @@
     <div class="flex flex-row items-start">
       <div
         class="column"
-        @drop="moveTask($event, column.tasks)"
+        @drop="moveTaskOrColumn($event, column.tasks, $columnIndex)"
         @dragover.prevent
         @dragenter.prevent
+        draggable
+        @dragstart.self="pickupColumn($event, $columnIndex)"
         v-for="(column, $columnIndex) in board.columns"
         :key="$columnIndex"
       >
         <div class="flex items-center mb-2 font-bold">{{ column.name }}</div>
         <div class="list-reset">
           <div
+            class="task"
             @click="goToTask(task)"
             draggable
+            @dragover.prevent
+            @dragenter.prevent
+            @drop.stop="moveTaskOrColumn($event, column.tasks, $columnIndex, $taskindex)"
             @dragstart="pickupTask($event, $taskindex, $columnIndex)"
-            class="task"
             v-for="(task, $taskindex) in column.tasks"
             :key="$taskindex"
           >
@@ -75,18 +80,47 @@ export default {
       e.dataTransfer.effectAllowed = "move";
       e.dataTransfer.dropEffect = "move";
 
-      e.dataTransfer.setData("task-index", taskIndex);
+      e.dataTransfer.setData("from-task-index", taskIndex);
       e.dataTransfer.setData("from-column-index", fromColumnIndex);
+      e.dataTransfer.setData("type", "task");
     },
-    moveTask(e, toTasks) {
+    pickupColumn(e, fromColumnIndex) {
+      e.dataTransfer.effectAllowed = "move";
+      e.dataTransfer.dropEffect = "move";
+
+      e.dataTransfer.setData("from-column-index", fromColumnIndex);
+      e.dataTransfer.setData("type", "column");
+    },
+    moveTaskOrColumn(e, toTasks, toColumnIndex, toTaskIndex) {
+      const type = e.dataTransfer.getData("type");
+      if (type === "task") {
+        this.moveTask(
+          e,
+          toTasks,
+          toTaskIndex !== undefined ? toTaskIndex : toTasks.length
+        );
+      } else {
+        this.moveColumn(e, toColumnIndex);
+      }
+    },
+    moveColumn(e, toColumnIndex) {
+      const fromColumnIndex = e.dataTransfer.getData("from-column-index");
+
+      this.$store.commit("MOVE_COLUMN", {
+        fromColumnIndex,
+        toColumnIndex
+      });
+    },
+    moveTask(e, toTasks, toTaskIndex) {
       const fromColumnIndex = e.dataTransfer.getData("from-column-index");
       const fromTasks = this.board.columns[fromColumnIndex].tasks;
-      const taskIndex = e.dataTransfer.getData("task-index");
+      const fromTaskIndex = e.dataTransfer.getData("from-task-index");
 
       this.$store.commit("MOVE_TASK", {
-        fromTasks,
         toTasks,
-        taskIndex
+        fromTaskIndex,
+        fromTasks,
+        toTaskIndex
       });
     }
   }
@@ -100,7 +134,7 @@ export default {
 
 .column {
   @apply bg-grey-light p-2 mr-4 text-left shadow rounded;
-  min-width: 350px;
+  min-width: 250px;
 }
 
 .board {
